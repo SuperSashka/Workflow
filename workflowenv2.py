@@ -15,15 +15,11 @@ def flatten(items):
         else:
             yield x
             
-def chgen(ntask):
-    import random
-    chn=[[],[],[],[],[]]
-    for i in range(ntask):
-        chn[np.random.randint(5)].append(i)
-    chn.sort()
-    while chn[0]==[]: del chn[0]
-    for chain in chn : random.shuffle(chain)
-    return chn;
+def treegen(tree_length):
+    tree=np.zeros((5,5),dtype=np.int)
+    for j in range(len(tree)): tree[j,(j+1):len(tree)]=np.random.randint(0,2,len(tree[j,(j+1):len(tree)]))
+    tree=tree-np.transpose(tree)
+    return tree;
 
 
 class workflow:
