@@ -56,21 +56,17 @@ class workflow:
 
     def AFT(self,shdl):
         comptime=self.comp_times;
-        aft=[comptime.max()+1,comptime.max()+1,comptime.max()+1,comptime.max()+1,comptime.max()+1];
-        prload=[0,0,0];
+        maxtime=self.schedule_length(shdl);
+        aft=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
-            prload[item[0]]+=(comptime[item[0],item[1]]+item[2])
-            aft[item[1]]=prload[item[0]]
+            aft[item[1]]=(comptime[item[0],item[1]]+item[2])
         return aft;
 
     def AST(self,shdl):
-        comptime=self.comp_times;
-        ast=[comptime.max()+1,comptime.max()+1,comptime.max()+1,comptime.max()+1,comptime.max()+1];
-        prload=[0,0,0];
+        maxtime=self.schedule_length(shdl);
+        ast=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
-            ast[item[1]]=0
-            ast[item[1]]+=prload[item[0]]
-            prload[item[0]]+=(comptime[item[0],item[1]]+item[2])
+            ast[item[1]]=item[2]
         return ast;
 
     def violation(self,task,current_time):
@@ -86,21 +82,33 @@ class workflow:
     def schedule_length(self,shdl):
         prload=[0,0,0];
         for item in shdl:
-            prload[item[0]]+=(self.comp_times[item[0],item[1]]+item[2])
+            if prload[item[0]]<(self.comp_times[item[0],item[1]]+item[2]): 
+                prload[item[0]]=(self.comp_times[item[0],item[1]]+item[2])
         shdl_length=np.amax(prload)
         return shdl_length
     
+    def processor_load(self, time):
+        load=[0,0,0];
+        for item in self.shdl:
+            if load[item[0]]<(self.comp_times[item[0],item[1]]+item[2]): 
+                load[item[0]]=(self.comp_times[item[0],item[1]]+item[2])
+        for i in range(len(load)): load[i]=load[i]-time
+        return load
     # shedule first task in chain j on i-th processor
     def schedule_task(self, nproc,ntsk,time):
         reward=0
+        processor_load=self.processor_load(time)
         if ntsk in self.scheduled:
             print('Process is already sheduled')
         else:
             if self.violation(ntsk,time):
                 print('Prequesites are not yet computed and task cannot be scheduled')
             else:
-                self.scheduled.append(ntsk)
-                self.shdl.append([nproc,ntsk,time])
+                if processor_load[nproc]>0:
+                    print('Proccessor is busy, scheduling is not possible')
+                else:
+                    self.scheduled.append(ntsk)
+                    self.shdl.append([nproc,ntsk,time])
         if len(self.scheduled)==self.ntasks:
             self.completed=True
             reward=self.maxlength-self.schedule_length(self.shdl)
