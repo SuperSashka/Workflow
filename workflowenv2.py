@@ -21,6 +21,13 @@ def treegen(tree_length):
     tree=tree-np.transpose(tree)
     return tree;
 
+def uppertriangle(tree):
+    upper=[]
+    for i in range(len(tree)):
+        for j in range(i+1,len(tree)):
+            upper.append(tree[i,j])
+    return upper;
+            
 
 class workflow:
     def __init__(self, tree,comp_times):
@@ -45,8 +52,14 @@ class workflow:
             for j in range(self.nprocessors):
                 self.actions.append([i,j])
         self.scheduled=[]
-        self.state=[]
+        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.ifbusy()]))
     
+    
+    def ifscheduled(self):
+        ifshdl=np.zeros(self.ntasks)
+        for task in self.scheduled:
+            ifshdl[task]=int(1)
+        return ifshdl
     
     def prequesites(self,task):
         preq=[]
@@ -96,24 +109,31 @@ class workflow:
                 load[item[0]]=(self.comp_times[item[0],item[1]]+item[2])
         for i in range(len(load)): load[i]=load[i]-time
         return load
+    
+    
+    def ifbusy(self):
+        ifload=np.zeros(self.nprocessors)
+        load=self.processor_load(self.current_time)
+        for i in range(self.nprocessors):
+            if load[i]>0: ifload[i]=int(1)
+        return ifload
     # shedule first task in chain j on i-th processor
     def schedule_task(self, nproc,ntsk,time):
         reward=0
-        processor_load=self.processor_load(time)
+        pr_load=self.processor_load(time)
         if ntsk in self.scheduled:
             #print('Process is already sheduled')
-            reward=0
+            reward=-1
         else:
             if self.violation(ntsk,time):
                 #print('Prequesites are not yet computed and task cannot be scheduled')
-                reward=0
+                reward=-1
             else:
-                if processor_load[nproc]>0:
-                   # print('Proccessor is busy, scheduling is not possible')
-                   reward=0
-                else:
                     self.scheduled.append(ntsk)
-                    self.shdl.append([nproc,ntsk,time])
+                    self.shdl.append([nproc,ntsk,time+pr_load[nproc]])
+                    self.load=self.processor_load(self.current_time)
+                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.ifbusy()]))
+                    reward=0
         if len(self.scheduled)==self.ntasks:
             self.completed=True
             reward=self.maxlength-self.schedule_length(self.shdl)
@@ -122,7 +142,7 @@ class workflow:
     def act(self, action): 
         if action==0: 
             self.current_time+=1
-            reward=0
+            reward=-1
             state=self.state;
         if action>0: reward,state=self.schedule_task(self.actions[action][1],self.actions[action][0],self.current_time)
         return reward,state;
