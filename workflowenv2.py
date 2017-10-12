@@ -56,14 +56,16 @@ class workflow:
 
     def AFT(self,shdl):
         comptime=self.comp_times;
-        maxtime=self.schedule_length(shdl);
+        #maxtime=self.schedule_length(shdl);
+        maxtime=100500
         aft=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
             aft[item[1]]=(comptime[item[0],item[1]]+item[2])
         return aft;
 
     def AST(self,shdl):
-        maxtime=self.schedule_length(shdl);
+        #maxtime=self.schedule_length(shdl);
+        maxtime=100500
         ast=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
             ast[item[1]]=item[2]
@@ -99,13 +101,16 @@ class workflow:
         reward=0
         processor_load=self.processor_load(time)
         if ntsk in self.scheduled:
-            print('Process is already sheduled')
+            #print('Process is already sheduled')
+            reward=0
         else:
             if self.violation(ntsk,time):
-                print('Prequesites are not yet computed and task cannot be scheduled')
+                #print('Prequesites are not yet computed and task cannot be scheduled')
+                reward=0
             else:
                 if processor_load[nproc]>0:
-                    print('Proccessor is busy, scheduling is not possible')
+                   # print('Proccessor is busy, scheduling is not possible')
+                   reward=0
                 else:
                     self.scheduled.append(ntsk)
                     self.shdl.append([nproc,ntsk,time])
