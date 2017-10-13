@@ -52,7 +52,7 @@ class workflow:
             for j in range(self.nprocessors):
                 self.actions.append([i,j])
         self.scheduled=[]
-        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.ifbusy()]))
+        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled()]))
     
     
     def ifscheduled(self):
@@ -132,7 +132,7 @@ class workflow:
                     self.scheduled.append(ntsk)
                     self.shdl.append([nproc,ntsk,time+pr_load[nproc]])
                     self.load=self.processor_load(self.current_time)
-                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.ifbusy()]))
+                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled()]))
                     reward=0
         if len(self.scheduled)==self.ntasks:
             self.completed=True

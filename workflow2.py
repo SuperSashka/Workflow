@@ -9,7 +9,7 @@ import workflowenv2 as wf
 
 
 
-EPISODES = 1000
+EPISODES = 10000
 
 def leaderboardcompare(lbrd,score):
     if score>=lbrd[0]:
@@ -29,7 +29,7 @@ class DQNAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.01  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -75,20 +75,20 @@ class DQNAgent:
 
 
 if __name__ == "__main__":
-    state_size = 36
+    state_size = 33
     action_size = 16
     agent = DQNAgent(state_size, action_size)
     # agent.load("./save/cartpole-dqn.h5")
     done = False
-    batch_size = 32
+    batch_size = 7
     lbrd=[0,0,0,0,0]
     cumulativereward=0
     scoreavg=0
     learning1=[]        
     for e in range(EPISODES):
         comptime=np.random.randint(20, size=(3, 5))+1
-        tree=wf.treegen(5)
-        wfl=wf.workflow(tree,comptime)
+        chns=wf.treegen(5)
+        wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state
         state = np.reshape(state, [1, state_size])
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         # if e % 10 == 0:
         #     agent.save("./save/cartpole-dqn.h5")
     import matplotlib.pyplot as plt 
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(20,10))
     plt.plot(learning1[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
