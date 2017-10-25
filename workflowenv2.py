@@ -26,6 +26,7 @@ def uppertriangle(tree):
     for i in range(len(tree)):
         for j in range(i+1,len(tree)):
             upper.append(tree[i,j])
+    upper=np.asarray(upper)
     return upper;
             
 
@@ -41,19 +42,18 @@ class workflow:
         self.ntasks=len(self.tree)
         #number of processors
         self.nprocessors=len(comp_times)
-        #sum of all worst case chain times, i.e. 'maximal worst case' shedule length
-        self.maxlength=0
-        for i in range(self.ntasks): self.maxlength+=np.amax(comp_times[:,i])
+        self.maxlength=np.amax(self.max_comp_length())
+        #self.maxlength=np.int(100)
         self.load=np.zeros(self.nprocessors)
         #for DQN we need to have all actions as a number, every action here is (i,j), shedule first task in chain
         #j on i-th processor
-        self.actions=[[-1,-1]]
+        self.actions=[]
         for i in range(self.ntasks):
             for j in range(self.nprocessors):
                 self.actions.append([i,j])
         self.scheduled=[]
-        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled()]))
-    
+        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
+        #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
     
     def ifscheduled(self):
         ifshdl=np.zeros(self.ntasks)
@@ -66,11 +66,31 @@ class workflow:
         for i in range(len(self.tree)): 
             if self.tree[task,i]==-1: preq.append(i)
         return(preq)
+        
+    
+    def process_chain(self,task):
+        subtasks=[task]
+        if self.prequesites(task)!=[]:
+            for subtask in self.prequesites(task):
+                if subtask not in subtasks:
+                    subtasks.append(subtask)
+            if self.prequesites(subtask)!=[]: subtasks.append(self.process_chain(subtask))
+        subtasks=list(flatten(subtasks))
+        subtasks=list(set(subtasks))
+        return subtasks
+    
+    def max_comp_length(self):
+        max_length=np.zeros(self.ntasks)
+        for i in range(self.ntasks): 
+            for task in self.process_chain(i):
+                max_length[i]+=int(np.amax(self.comp_times[:,task]))
+        return max_length
+            
 
     def AFT(self,shdl):
         comptime=self.comp_times;
         #maxtime=self.schedule_length(shdl);
-        maxtime=100500
+        maxtime=self.maxlength
         aft=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
             aft[item[1]]=(comptime[item[0],item[1]]+item[2])
@@ -78,7 +98,7 @@ class workflow:
 
     def AST(self,shdl):
         #maxtime=self.schedule_length(shdl);
-        maxtime=100500
+        maxtime=self.maxlength
         ast=[maxtime+1,maxtime+1,maxtime+1,maxtime+1,maxtime+1];
         for item in shdl:
             ast[item[1]]=item[2]
@@ -86,16 +106,15 @@ class workflow:
 
     def violation(self,task,current_time):
         vltn=False
-        aft=self.AFT(self.shdl);
         preq=self.prequesites(task)
         for item in preq: 
-            if aft[item]>current_time: 
+            if item not in self.scheduled: 
                 vltn=True
                 #print('Prequesites are not yet computed')
         return vltn;
     
     def schedule_length(self,shdl):
-        prload=[0,0,0];
+        prload=np.zeros(self.nprocessors);
         for item in shdl:
             if prload[item[0]]<(self.comp_times[item[0],item[1]]+item[2]): 
                 prload[item[0]]=(self.comp_times[item[0],item[1]]+item[2])
@@ -103,13 +122,39 @@ class workflow:
         return shdl_length
     
     def processor_load(self, time):
-        load=[0,0,0];
+        load=np.zeros(self.nprocessors);
         for item in self.shdl:
             if load[item[0]]<(self.comp_times[item[0],item[1]]+item[2]): 
                 load[item[0]]=(self.comp_times[item[0],item[1]]+item[2])
-        for i in range(len(load)): load[i]=load[i]-time
+        #for i in range(len(load)): load[i]=load[i]-time
         return load
     
+    def processor_time(self):
+        time=np.zeros(self.nprocessors);
+        for item in self.shdl:
+            time[item[0]]+=(self.comp_times[item[0],item[1]]) 
+        return time
+    
+    
+    
+    def npreqs_notcomputed(self):
+        notcomp=np.zeros(self.ntasks)
+        for i in range(self.ntasks):
+            for task in self.prequesites(i):
+                if task not in self.scheduled:
+                    notcomp[i]+=1
+        notcomp=notcomp/self.ntasks
+        return notcomp;
+
+    def time_to_start(self):
+        TTS=np.zeros(self.ntasks)
+        for i in range(self.ntasks):
+            for task in self.prequesites(i):
+                if task not in self.scheduled:
+                    TTS[i]+=np.amin(self.comp_times[:,task])
+        TTS=TTS/self.ntasks
+        return TTS; 
+       
     
     def ifbusy(self):
         ifload=np.zeros(self.nprocessors)
@@ -117,29 +162,39 @@ class workflow:
         for i in range(self.nprocessors):
             if load[i]>0: ifload[i]=int(1)
         return ifload
-    # shedule first task in chain j on i-th processor
+
     def schedule_task(self, nproc,ntsk,time):
         reward=0
-        pr_load=self.processor_load(time)
+        #pr_load=self.processor_load(time)
+        pr_load=self.processor_time()
         if ntsk in self.scheduled:
             #print('Process is already sheduled')
-            reward=-1
+            reward=-2
         else:
-            if self.violation(ntsk,time):
-                #print('Prequesites are not yet computed and task cannot be scheduled')
-                reward=-1
+            proc_time=self.processor_time()
+            if self.violation(ntsk,proc_time[nproc]):
+                #print('Prequesites are not yet sheduled and task cannot be scheduled')
+                #for tasks in prequesites(ntsk)
+                reward=-2
             else:
                     self.scheduled.append(ntsk)
-                    self.shdl.append([nproc,ntsk,time+pr_load[nproc]])
-                    self.load=self.processor_load(self.current_time)
-                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled()]))
+                    self.shdl.append([nproc,ntsk,pr_load[nproc]])
+                    self.load=self.processor_time()
+                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
+                    #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
+                    #self.current_time=np.amin(self.processor_time())
                     reward=0
         if len(self.scheduled)==self.ntasks:
             self.completed=True
             reward=self.maxlength-self.schedule_length(self.shdl)
         return reward,self.state;
-    
+  
     def act(self, action): 
+        reward,state=self.schedule_task(self.actions[action][1],self.actions[action][0],self.current_time)
+        return reward,state;
+    
+    
+    def act2(self, action): 
         if action==0: 
             self.current_time+=1
             reward=-1
