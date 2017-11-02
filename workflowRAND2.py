@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ # -*- coding: utf-8 -*-
 """
 Created on Tue Oct  3 11:06:51 2017
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         wfl=wf.workflow(tree,comptime)
         done=wfl.completed
         for time in range(5000):
-            action = np.random.randint(16)
+            action = np.random.randint(15)
             reward,_=wfl.act(action)
             done=wfl.completed
             #score+=reward
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt 
     import matplotlib
     matplotlib.rcParams.update({'font.size': 22})
-    plt.figure(figsize=(10,5))
+    plt.figure(figsize=(20,10))
     plt.plot(learningRAND[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')

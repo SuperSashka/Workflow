@@ -16,9 +16,12 @@ wfl=wf.workflow(tree,comptime)
 
 
 while not(wfl.completed):
-    random_action=np.random.randint(16)
-    print(wfl.actions[random_action])
+    random_action=np.random.randint(15)
+#    print(wfl.actions[random_action])
     wfl.act(random_action)
-    print(wfl.scheduled)
+    print(wfl.shdl)
+    print(wfl.AFT(wfl.shdl))
+#    print(wfl.scheduled)
+    print(wfl.load)
 
 print(wfl.maxlength-wfl.schedule_length(wfl.shdl))
