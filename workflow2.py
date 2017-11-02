@@ -9,7 +9,7 @@ import workflowenv2 as wf
 
 
 
-EPISODES = 60000
+EPISODES = 10000
 
 def leaderboardcompare(lbrd,score):
     if score>=lbrd[0]:
@@ -29,7 +29,7 @@ class DQNAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 0.1  # exploration rate
+        self.epsilon = 0.01  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -75,12 +75,12 @@ class DQNAgent:
 
 
 if __name__ == "__main__":
-    state_size = 39
-    action_size = 15
+    state_size = 33
+    action_size = 16
     agent = DQNAgent(state_size, action_size)
     # agent.load("./save/cartpole-dqn.h5")
     done = False
-    batch_size = 64
+    batch_size = 7
     lbrd=[0,0,0,0,0]
     cumulativereward=0
     scoreavg=0
@@ -98,11 +98,10 @@ if __name__ == "__main__":
             next_state = wfl.state
             done=wfl.completed
             #score+=reward
-            #reward=0
-            #if not(done): reward=total_time
-            #if done and total_time>scoreavg/(e+1):
-                #reward=total_time
-            reward=total_time
+            reward=0
+            if not(done): reward=total_time
+            if done and total_time>scoreavg/(e+1):
+                reward=total_time
             #if done: [lbrd,reward]=leaderboardcompare(lbrd,score-1)  
             cumulativereward+=reward
             next_state = np.reshape(next_state, [1, state_size])
