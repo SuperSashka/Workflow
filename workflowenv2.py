@@ -169,13 +169,13 @@ class workflow:
         pr_load=self.processor_time()
         if ntsk in self.scheduled:
             #print('Process is already sheduled')
-            reward=-2
+            reward=-0.01
         else:
             proc_time=self.processor_time()
             if self.violation(ntsk,proc_time[nproc]):
                 #print('Prequesites are not yet sheduled and task cannot be scheduled')
                 #for tasks in prequesites(ntsk)
-                reward=-2
+                reward=-0.01
             else:
                     self.scheduled.append(ntsk)
                     self.shdl.append([nproc,ntsk,pr_load[nproc]])
