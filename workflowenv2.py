@@ -16,7 +16,7 @@ def flatten(items):
             yield x
             
 def treegen(tree_length):
-    tree=np.zeros((5,5),dtype=np.int)
+    tree=np.zeros((tree_length,tree_length),dtype=np.int)
     for j in range(len(tree)): tree[j,(j+1):len(tree)]=np.random.randint(0,2,len(tree[j,(j+1):len(tree)]))
     tree=tree-np.transpose(tree)
     return tree;
@@ -169,13 +169,13 @@ class workflow:
         pr_load=self.processor_time()
         if ntsk in self.scheduled:
             #print('Process is already sheduled')
-            reward=-0.01
+            reward=-0.2
         else:
             proc_time=self.processor_time()
             if self.violation(ntsk,proc_time[nproc]):
                 #print('Prequesites are not yet sheduled and task cannot be scheduled')
                 #for tasks in prequesites(ntsk)
-                reward=-0.01
+                reward=-0.2
             else:
                     self.scheduled.append(ntsk)
                     self.shdl.append([nproc,ntsk,pr_load[nproc]])
