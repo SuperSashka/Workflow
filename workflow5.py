@@ -73,11 +73,11 @@ class DQNAgent:
             targets = np.zeros((inputs.shape[0], self.ACTIONS))                     
             #Now we do the experience replay
             for i in range(0, len(minibatch)):
-                state_t = minibatch[i][0]
-                action_t = minibatch[i][1]   #This is action index
-                reward_t = minibatch[i][2]
-                state_t1 = minibatch[i][3]
-                terminal = minibatch[i][4]
+                state_t = minibatch[i][0][0]
+                action_t = minibatch[i][1][0]   #This is action index
+                reward_t = minibatch[i][2][0]
+                state_t1 = minibatch[i][0][1]
+                terminal = minibatch[i][3]
                 # if terminated, only equals reward
                 inputs[i:i + 1] = state_t    #I saved down s_t
                 targets[i] = self.model.predict(state_t)  # Hitting each buttom probability
@@ -109,26 +109,32 @@ class DQNAgent:
 
 def playGame():
     # open up a game state to communicate with emulator
-    state_size = 99
-    action_size = 30
+    state_size = 39
+    action_size = 15
     agent = DQNAgent(state_size, action_size)
     # agent.load("./save/cartpole-dqn.h5")
     done = False
     batch_size = 256
     cumulativereward=0
     scoreavg=0
+    timeavg=0
     EPISODES=200000
     loss=0
 
     for e in range(EPISODES):
-        comptime=np.random.randint(20, size=(3, 10))+1
-        chns=wf.treegen(10)
+        comptime=np.random.randint(20, size=(3, 5))+1
+        chns=wf.treegen(5)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
+        st=deque(maxlen=2)
+        at=deque(maxlen=1)
+        rt=deque(maxlen=1)
         state = wfl.state
         state = np.reshape(state, [1, state_size])
+        st.append(state)
         for time in range(5000):
             _,action = agent.act(state,e)
+            at.append(action)
             total_time,_=wfl.act(action)
             next_state = wfl.state
             done=wfl.completed
@@ -138,15 +144,18 @@ def playGame():
             #if done and total_time>scoreavg/(e+1):
                 #reward=total_time
             reward=total_time
+            rt.append(reward)
             #if done: [lbrd,reward]=leaderboardcompare(lbrd,score-1)  
             cumulativereward+=reward
             next_state = np.reshape(next_state, [1, state_size])
-            agent.remember((state, action, reward, next_state, done))
+            st.append(next_state)
+            agent.remember((st, at, rt, done))
             state = next_state
             if done:
                 scoreavg+=total_time
-                print("episode: {}/{}, time: {}, e: {:.2}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
-                      .format(e, EPISODES, time, agent.epsilon, total_time, scoreavg/(e+1),cumulativereward/(e+1)))
+                timeavg+=time
+                print("episode: {}/{}, time: {}, time avg: {:.4}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
+                      .format(e, EPISODES, time, timeavg/(e+1), total_time, scoreavg/(e+1),cumulativereward/(e+1)))
                 learning1.append([scoreavg/(e+1)])
                 break
         if len(agent.D) > batch_size:
