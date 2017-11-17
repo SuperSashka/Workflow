@@ -24,9 +24,9 @@ class DQNAgent:
     def __init__(self, state_size, action_size):
         self.STATE=state_size
         self.ACTIONS = action_size # number of valid actions
-        self.GAMMA = 0.99 # decay rate of past observations
+        self.GAMMA = 0.9  # decay rate of past observations
         self.OBSERVATION = 200. # timesteps to observe before training
-        self.EXPLORE = 180000. # frames over which to anneal epsilon
+        self.EXPLORE = 45000. # frames over which to anneal epsilon
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
         self.REPLAY_MEMORY = 50000 # number of previous transitions to remember
@@ -73,19 +73,22 @@ class DQNAgent:
             targets = np.zeros((inputs.shape[0], self.ACTIONS))                     
             #Now we do the experience replay
             for i in range(0, len(minibatch)):
-                state_t = minibatch[i][0][0]
+                state_t =minibatch[i][0][0]
                 action_t = minibatch[i][1][0]   #This is action index
                 reward_t = minibatch[i][2][0]
                 state_t1 = minibatch[i][0][1]
+                action_t1=minibatch[i][1][1]
+                reward_t1= minibatch[i][2][1]
+                state_t2=minibatch[i][0][2]
                 terminal = minibatch[i][3]
                 # if terminated, only equals reward
                 inputs[i:i + 1] = state_t    #I saved down s_t
-                targets[i] = self.model.predict(state_t)  # Hitting each buttom probability
-                Q_sa = self.model.predict(state_t1)
+                targets[i] = self.model.predict(state_t1)  # Hitting each buttom probability
+                Q_sa = self.model.predict(state_t2)
                 if terminal:
-                    targets[i, action_t] = reward_t
+                    targets[i, action_t1] = reward_t1
                 else:
-                    targets[i, action_t] = reward_t + self.GAMMA * np.max(Q_sa)
+                    targets[i, action_t1] = reward_t +reward_t1*self.GAMMA+ self.GAMMA**2 * np.max(Q_sa)
             # targets2 = normalize(targets)
             model_loss = self.model.train_on_batch(inputs, targets)
             if self.epsilon > self.FINAL_EPSILON:
@@ -106,9 +109,16 @@ class DQNAgent:
         self.model.compile(loss='mse',optimizer=adam)
         print ("Weight load successfully")   
 
-
-def playGame():
-    # open up a game state to communicate with emulator
+    
+if __name__ == "__main__":
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
+    from keras import backend as K
+    K.set_session(sess)
+    learning2=[] 
+    time2=[]
+        # open up a game state to communicate with emulator
     state_size = 39
     action_size = 15
     agent = DQNAgent(state_size, action_size)
@@ -118,7 +128,7 @@ def playGame():
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=200000
+    EPISODES=50000
     loss=0
 
     for e in range(EPISODES):
@@ -126,9 +136,9 @@ def playGame():
         chns=wf.treegen(5)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
-        st=deque(maxlen=2)
-        at=deque(maxlen=1)
-        rt=deque(maxlen=1)
+        st=deque(maxlen=3)
+        at=deque(maxlen=2)
+        rt=deque(maxlen=2)
         state = wfl.state
         state = np.reshape(state, [1, state_size])
         st.append(state)
@@ -149,31 +159,28 @@ def playGame():
             cumulativereward+=reward
             next_state = np.reshape(next_state, [1, state_size])
             st.append(next_state)
-            agent.remember((st, at, rt, done))
+            if time>0:
+                st1=[]
+                at1=[]
+                rt1=[]
+                for i in range(len(st)): st1.append(st[i])
+                for i in range(len(at)): at1.append(at[i])
+                for i in range(len(rt)): rt1.append(rt[i])
+                agent.remember((st1, at1, rt1, done))
             state = next_state
             if done:
                 scoreavg+=total_time
                 timeavg+=time
                 print("episode: {}/{}, time: {}, time avg: {:.4}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
                       .format(e, EPISODES, time, timeavg/(e+1), total_time, scoreavg/(e+1),cumulativereward/(e+1)))
-                learning1.append([scoreavg/(e+1)])
+                learning2.append([scoreavg/(e+1)])
+                time2.append([timeavg/(e+1)])
                 break
         if len(agent.D) > batch_size:
             loss+=agent.replay(batch_size,e)
-
-
-    
-if __name__ == "__main__":
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
-    from keras import backend as K
-    K.set_session(sess)
-    learning1=[] 
-    playGame()
     import matplotlib.pyplot as plt 
-    plt.figure(figsize=(20,10))
-    plt.plot(learning1[100:], '-')
+    plt.figure(figsize=(10,5))
+    plt.plot(learning2[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
     plt.show()

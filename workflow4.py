@@ -26,7 +26,7 @@ class DQNAgent:
         self.ACTIONS = action_size # number of valid actions
         self.GAMMA = 0.99 # decay rate of past observations
         self.OBSERVATION = 200. # timesteps to observe before training
-        self.EXPLORE = 180000. # frames over which to anneal epsilon
+        self.EXPLORE = 80000. # frames over which to anneal epsilon
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
         self.REPLAY_MEMORY = 50000 # number of previous transitions to remember
@@ -38,8 +38,8 @@ class DQNAgent:
 
     def buildmodel(self):
         model = Sequential()
-        model.add(Dense(128, input_dim=self.STATE, activation='relu'))
-        model.add(Dense(128, activation='relu'))
+        model.add(Dense(1024, input_dim=self.STATE, activation='relu'))
+        model.add(Dense(1024, activation='relu'))
         model.add(Dense(self.ACTIONS, activation='linear'))
         adam = Adam(lr=self.LEARNING_RATE)
         model.compile(loss='mse',optimizer=adam)
@@ -109,20 +109,21 @@ class DQNAgent:
 
 def playGame():
     # open up a game state to communicate with emulator
-    state_size = 99
-    action_size = 30
+    state_size = 336
+    action_size = 100
     agent = DQNAgent(state_size, action_size)
     # agent.load("./save/cartpole-dqn.h5")
     done = False
     batch_size = 256
     cumulativereward=0
     scoreavg=0
-    EPISODES=200000
+    timeavg=0
+    EPISODES=100000
     loss=0
 
     for e in range(EPISODES):
-        comptime=np.random.randint(20, size=(3, 10))+1
-        chns=wf.treegen(10)
+        comptime=np.random.randint(20, size=(5, 20))+1
+        chns=wf.treegen(20)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state
@@ -145,9 +146,11 @@ def playGame():
             state = next_state
             if done:
                 scoreavg+=total_time
-                print("episode: {}/{}, time: {}, e: {:.2}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
-                      .format(e, EPISODES, time, agent.epsilon, total_time, scoreavg/(e+1),cumulativereward/(e+1)))
+                timeavg+=time
+                print("episode: {}/{}, time: {}, time avg: {:.4}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
+                      .format(e, EPISODES, time, timeavg/(e+1), total_time, scoreavg/(e+1),cumulativereward/(e+1)))
                 learning1.append([scoreavg/(e+1)])
+                time1.append([timeavg/(e+1)])
                 break
         if len(agent.D) > batch_size:
             loss+=agent.replay(batch_size,e)
@@ -161,6 +164,7 @@ if __name__ == "__main__":
     from keras import backend as K
     K.set_session(sess)
     learning1=[] 
+    time1=[]
     playGame()
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(20,10))
