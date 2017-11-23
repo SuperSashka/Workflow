@@ -113,8 +113,8 @@ if __name__ == "__main__":
     sess = tf.Session(config=config)
     from keras import backend as K
     K.set_session(sess)
-    learning1=[] 
-    time1=[]
+    learning61=[] 
+    time61=[]
     # open up a game state to communicate with emulator
     state_size = 99
     action_size = 30
@@ -168,14 +168,14 @@ if __name__ == "__main__":
                 if e>time_delay:neps=e+1-time_delay
                 print("episode: {}/{}, time: {}, time avg: {:.4}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
                       .format(e, EPISODES, time, timeavg/neps, total_time, scoreavg/neps,cumulativereward/neps))
-                learning1.append([scoreavg/(e+1)])
-                time1.append([timeavg/(e+1)])
+                learning61.append([scoreavg/neps])
+                time61.append([timeavg/neps])
                 break
         if len(agent.D) > batch_size:
             loss+=agent.replay(batch_size,e)
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(20,10))
-    plt.plot(learning1[100:], '-')
+    plt.plot(learning61[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
     plt.show()

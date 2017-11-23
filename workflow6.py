@@ -13,6 +13,7 @@ from keras.models import model_from_json
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D,Reshape
 from keras.optimizers import SGD , Adam
 import tensorflow as tf
 import workflowenv3 as wf
@@ -39,6 +40,9 @@ class DQNAgent:
     def buildmodel(self):
         model = Sequential()
         model.add(Dense(1024, input_dim=self.STATE, activation='relu'))
+        model.add(Reshape((32, 32, 1)))
+        model.add(Conv2D(10, (3, 3), activation='relu', input_shape=(32, 32, 1)))
+        model.add(Flatten())
         model.add(Dense(1024, activation='relu'))
         model.add(Dense(self.ACTIONS, activation='linear'))
         adam = Adam(lr=self.LEARNING_RATE)
@@ -122,7 +126,7 @@ def playGame():
     loss=0
 
     for e in range(EPISODES):
-        time_delay=500;
+        time_delay=0;
         if e<time_delay: 
             scoreavg=0
             timeavg=0
