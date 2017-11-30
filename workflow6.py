@@ -40,9 +40,9 @@ class DQNAgent:
     def buildmodel(self):
         model = Sequential()
         model.add(Dense(1024, input_dim=self.STATE, activation='relu'))
-        model.add(Reshape((32, 32, 1)))
-        model.add(Conv2D(10, (3, 3), activation='relu', input_shape=(32, 32, 1)))
-        model.add(Flatten())
+#        model.add(Reshape((32, 32, 1)))
+#        model.add(Conv2D(10, (3, 3), activation='relu', input_shape=(32, 32, 1)))
+#        model.add(Flatten())
         model.add(Dense(1024, activation='relu'))
         model.add(Dense(self.ACTIONS, activation='linear'))
         adam = Adam(lr=self.LEARNING_RATE)
@@ -113,8 +113,8 @@ class DQNAgent:
 
 def playGame():
     # open up a game state to communicate with emulator
-    state_size = 39
-    action_size = 15
+    state_size = 121
+    action_size = 50
     agent = DQNAgent(state_size, action_size)
     # agent.load("./save/cartpole-dqn.h5")
     done = False
@@ -122,7 +122,7 @@ def playGame():
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=100000
+    EPISODES=500000
     loss=0
 
     for e in range(EPISODES):
@@ -130,8 +130,8 @@ def playGame():
         if e<time_delay: 
             scoreavg=0
             timeavg=0
-        comptime=np.random.randint(20, size=(3, 5))+1
-        chns=wf.treegen(5)
+        comptime=wf.compgen(10,5)
+        chns=wf.treegen(10)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state

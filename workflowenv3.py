@@ -21,6 +21,15 @@ def treegen(tree_length):
     tree=tree-np.transpose(tree)
     return tree;
 
+def compgen(ntask,nprocessors):
+    c_gen=np.zeros((nprocessors,ntask))
+    mainline=np.random.randint(20, size=(1, ntask))+1
+    c_gen[0,:]=mainline
+    for i in range(1,nprocessors):
+        c_gen[i,:]=np.random.uniform(low=0.5, high=2.0)*mainline
+    c_gen=np.int64(c_gen)
+    return c_gen
+
 def uppertriangle(tree):
     upper=[]
     for i in range(len(tree)):

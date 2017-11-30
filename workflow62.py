@@ -26,11 +26,11 @@ class DQNAgent:
         self.STATE=state_size
         self.ACTIONS = action_size # number of valid actions
         self.GAMMA = 0.99 # decay rate of past observations
-        self.OBSERVATION = 100. # timesteps to observe before training
+        self.OBSERVATION = 500. # timesteps to observe before training
         self.EXPLORE = 180000. # frames over which to anneal epsilon
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
-        self.REPLAY_MEMORY = 50000 # number of previous transitions to remember
+        self.REPLAY_MEMORY = 1000000 # number of previous transitions to remember
         self.FRAME_PER_ACTION = 1
         self.LEARNING_RATE = 1e-4
         self.D = deque(maxlen=self.REPLAY_MEMORY)
@@ -120,13 +120,13 @@ if __name__ == "__main__":
     learning62=[] 
     time62=[]
     # open up a game state to communicate with emulator
-    state_size = 216 
-    action_size = 75
+    state_size = 200 
+    action_size = 60
     time_delay=20000
     agent = DQNAgent(state_size, action_size)
     #agent.load()
     done = False
-    batch_size = 1024
+    batch_size = 256
     cumulativereward=0
     scoreavg=0
     timeavg=0
@@ -138,7 +138,7 @@ if __name__ == "__main__":
             scoreavg=0
             timeavg=0
             #agent.save()
-        comptime=np.random.randint(20, size=(5, 15))+1
+        comptime=np.random.randint(20, size=(4, 15))+1
         chns=wf.treegen(15)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
@@ -161,7 +161,7 @@ if __name__ == "__main__":
             #if done: [lbrd,reward]=leaderboardcompare(lbrd,score-1)  
             cumulativereward+=reward
             next_state = np.reshape(next_state, [1, state_size])
-            agent.remember((state, action, reward, next_state, done))
+            if (time%5==0) or (reward>0): agent.remember((state, action, reward, next_state, done))
             state = next_state
             if done:
                 scoreavg+=total_time

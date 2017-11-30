@@ -116,9 +116,9 @@ if __name__ == "__main__":
     learning61=[] 
     time61=[]
     # open up a game state to communicate with emulator
-    state_size = 99
-    action_size = 30
-    time_delay=3500
+    state_size = 39
+    action_size = 15
+    time_delay=0
     agent = DQNAgent(state_size, action_size)
     #agent.load()
     done = False
@@ -136,8 +136,9 @@ if __name__ == "__main__":
             agent.EXPLORE=80000
             agent.INITIAL_EPSILON=0.1
             agent.save()
-        comptime=np.random.randint(20, size=(3, 10))+1
-        chns=wf.treegen(10)
+        #comptime=np.random.randint(20, size=(3, 10))+1
+        comptime=wf.compgen(5,3)
+        chns=wf.treegen(5)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state
