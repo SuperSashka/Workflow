@@ -40,7 +40,7 @@ class DQNAgent:
         model = Sequential()
         model.add(Dense(1024, input_dim=self.STATE, activation='relu'))
         model.add(Dense(1024, activation='relu'))
-        model.add(Dense(self.ACTIONS, activation='linear'))
+        model.add(Dense(self.ACTIONS, activation='relu'))
         adam = Adam(lr=self.LEARNING_RATE)
         model.compile(loss='mse',optimizer=adam)
         return model
