@@ -50,18 +50,16 @@ class DQNAgent:
         self.D.append(SARSA)
         
     def act(self,state, time):
-        a_t = np.zeros([self.ACTIONS])
         #choose an action epsilon greedy
         if random.random() <= self.epsilon:
                 #print("----------Random Action----------")
-                action_index = random.randrange(self.ACTIONS)
-                a_t[action_index] = 1
+                q = np.random.random(self.ACTIONS)
+                action_index = np.argmax(q)
+                
         else:
                 q = self.model.predict(state)       #input a stack of 4 images, get the prediction
-                max_Q = np.argmax(q)
-                action_index = max_Q
-                a_t[max_Q] = 1 
-        return a_t,action_index
+                action_index = np.argmax(q)
+        return action_index
     
     def replay(self,batch_size,ep):
         model_loss=0
@@ -136,8 +134,8 @@ if __name__ == "__main__":
         state = wfl.state
         state = np.reshape(state, [1, state_size])
         for time in range(5000):
-            _,action = agent.act(state,e)
-            total_time,_=wfl.act_mode(action,'score')
+            action = agent.act(state,e)
+            total_time,_=wfl.act(action)
             next_state = wfl.state
             done=wfl.completed
             reward=total_time
@@ -157,7 +155,7 @@ if __name__ == "__main__":
         if len(agent.D) > batch_size:
             loss+=agent.replay(batch_size,e)
     import matplotlib.pyplot as plt 
-    plt.figure(figsize=(20,10))
+    plt.figure(figsize=(10,5))
     plt.plot(learning61[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')

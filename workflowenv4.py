@@ -172,52 +172,29 @@ class workflow:
             if load[i]>0: ifload[i]=int(1)
         return ifload
     
-    
+    def isvalid(self,ntsk,nproc):
+        vld=True
+        if (ntsk in self.scheduled) or (self.violation(ntsk,nproc)): vld=False
+        return vld
 
-    def schedule_task(self, nproc,ntsk,time,mode):
+    def schedule_task(self, ntsk,nproc):
         reward=0
-        #pr_load=self.processor_load(time)
         pr_load=self.processor_time()
-        if ntsk in self.scheduled:
+        if not(self.isvalid(ntsk,nproc)):
             #print('Process is already sheduled')
-            if mode=='time':
-                reward=-1
-            else:
-                reward=-0.2
+            reward=-0.2
         else:
-            proc_time=self.processor_time()
-            if self.violation(ntsk,proc_time[nproc]):
-                #print('Prequesites are not yet sheduled and task cannot be scheduled')
-                #for tasks in prequesites(ntsk)
-                if mode=='time':
-                    reward=-1
-                else:
-                    reward=-0.2
-            else:
-                    self.scheduled.append(ntsk)
-                    self.shdl.append([nproc,ntsk,pr_load[nproc]])
-                    self.load=self.processor_time()
-                    self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
-                    #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
-                    #self.current_time=np.amin(self.processor_time())
-                    if mode=='time':
-                        reward=1
-                    else:
-                        reward=0
+            self.scheduled.append(ntsk)
+            self.shdl.append([nproc,ntsk,pr_load[nproc]])
+            self.load=self.processor_time()
+            self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
         if len(self.scheduled)==self.ntasks:
             self.completed=True
-            if mode=='time':
-                reward=1
-            else:
-                reward=self.maxlength-self.schedule_length(self.shdl)
+            reward=self.maxlength-self.schedule_length(self.shdl)
         return reward,self.state;
   
     def act(self, action): 
-        reward,state=self.schedule_task(self.actions[action][1],self.actions[action][0],self.current_time)
+        reward,state=self.schedule_task(self.actions[action][0],self.actions[action][1])
         return reward,state;
     
-    
-    def act_mode(self, action,mode): 
-        reward,state=self.schedule_task(self.actions[action][1],self.actions[action][0],self.current_time,mode)
-        return reward,state;
 
