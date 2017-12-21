@@ -106,6 +106,8 @@ class DQNAgent:
 
     
 if __name__ == "__main__":
+    taskn=60
+    procn=5
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
@@ -126,8 +128,8 @@ if __name__ == "__main__":
     loss=0
 
     for e in range(EPISODES):
-        comptime=wf.compgen(60,5)
-        chns=wf.treegen(60)
+        comptime=wf.compgen(taskn,procn)
+        chns=wf.treegen(taskn)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state
