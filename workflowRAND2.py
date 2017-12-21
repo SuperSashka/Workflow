@@ -8,7 +8,7 @@ Created on Tue Oct  3 11:06:51 2017
 # -*- coding: utf-8 -*-
 import numpy as np
 import workflowenv2 as wf
-
+import workflowenv4 as wf4
 
 
 EPISODES = 100000
@@ -18,12 +18,12 @@ if __name__ == "__main__":
     cumulativereward=0
     learningRAND=[]        
     for e in range(EPISODES):
-        comptime=np.random.randint(20, size=(3, 5))+1
-        tree=wf.treegen(5)
+        comptime=wf4.compgen(60,5)
+        tree=wf.treegen(60)
         wfl=wf.workflow(tree,comptime)
         done=wfl.completed
         for time in range(5000):
-            action = np.random.randint(15)
+            action = np.random.randint(300)
             reward,_=wfl.act(action)
             done=wfl.completed
             #score+=reward

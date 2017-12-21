@@ -15,26 +15,28 @@ EPISODES = 100000
 
 if __name__ == "__main__":
     cumulativereward=0
-    learningRAND=[]        
+    learningRAND=[]  
+      
     for e in range(EPISODES):
-        comptime=wf.compgen(5,3)
-        tree=wf.treegen(5)
+        comptime=wf.compgen(60,5)
+        tree=wf.treegen(60)
         wfl=wf.workflow(tree,comptime)
         done=wfl.completed
-        for time in range(5):
-            wfl2=wf.wfl_copy(wfl)
-            for time1 in range(time,5):
-                done1=wfl2.completed
-                va=wfl2.valid_actions_mask()
-                action_dist = np.random.random(15)*va
-                action=(action_dist.tolist()).index(max(action_dist))
-                pr_reward1,_=wfl2.act(action)
-                done1=wfl2.completed
-                if done1: break
+        random_dist=np.random.random(300)
+        for time in range(60):
+#            wfl2=wf.wfl_copy(wfl)
+#            for time1 in range(time,5):
+#                done1=wfl2.completed
+#                va=wfl2.valid_actions_mask()
+#                action_dist = np.random.random(15)*va
+#                action=(action_dist.tolist()).index(max(action_dist))
+#                pr_reward1,_=wfl2.act(action)
+#                done1=wfl2.completed
+#                if done1: break
             #if time>0: print(pr_reward1-pr_reward2)
-            va=wfl.valid_actions_mask()
+            va=wfl.val_mask
             #print(va)
-            action_dist = np.random.random(15)*va
+            action_dist =random_dist *va
             #print(va[action])
             action=(action_dist.tolist()).index(max(action_dist))
             score,_=wfl.act(action)
@@ -42,7 +44,7 @@ if __name__ == "__main__":
             #score+=reward
             #reward=0
             #if done: [lbrd,reward]=leaderboardcompare(lbrd,score-1)  
-            pr_reward2=pr_reward1
+#            pr_reward2=pr_reward1
             if done:
                 cumulativereward+=score
                 print("episode: {}/{}, score: {}, score avg: {:.4}"

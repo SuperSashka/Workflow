@@ -25,7 +25,7 @@ class DQNAgent:
         self.STATE=state_size
         self.ACTIONS = action_size # number of valid actions
         self.GAMMA = 0.99 # decay rate of past observations
-        self.OBSERVATION = 10. # timesteps to observe before training
+        self.OBSERVATION = 300. # timesteps to observe before training
         self.EXPLORE = 80000. # frames over which to anneal epsilon
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
@@ -49,15 +49,15 @@ class DQNAgent:
     def remember(self,SARSA):
         self.D.append(SARSA)
         
-    def act(self,state, time):
+    def act(self,state, mask):
         #choose an action epsilon greedy
         if random.random() <= self.epsilon:
                 #print("----------Random Action----------")
-                q = np.random.random(self.ACTIONS)
+                q = np.random.random(self.ACTIONS)*mask
                 action_index = np.argmax(q)
                 
         else:
-                q = self.model.predict(state)       #input a stack of 4 images, get the prediction
+                q = self.model.predict(state)*mask       #input a stack of 4 images, get the prediction
                 action_index = np.argmax(q)
         return action_index
     
@@ -114,27 +114,26 @@ if __name__ == "__main__":
     learning61=[] 
     time61=[]
     # open up a game state to communicate with emulator
-    state_size = 39
-    action_size = 15
+    state_size = 2375
+    action_size = 300
     agent = DQNAgent(state_size, action_size)
     #agent.load()
     done = False
-    batch_size = 256
+    batch_size = 32
     cumulativereward=0
     scoreavg=0
-    timeavg=0
     EPISODES=100000
     loss=0
 
     for e in range(EPISODES):
-        comptime=wf.compgen(5,3)
-        chns=wf.treegen(5)
+        comptime=wf.compgen(60,5)
+        chns=wf.treegen(60)
         wfl=wf.workflow(chns,comptime)
         done=wfl.completed
         state = wfl.state
         state = np.reshape(state, [1, state_size])
         for time in range(5000):
-            action = agent.act(state,e)
+            action = agent.act(state,wfl.val_mask)
             total_time,_=wfl.act(action)
             next_state = wfl.state
             done=wfl.completed
@@ -145,17 +144,16 @@ if __name__ == "__main__":
             state = next_state
             if done:
                 scoreavg+=total_time
-                timeavg+=time
                 neps=e+1
-                print("episode: {}/{}, time: {}, time avg: {:.4}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
-                      .format(e, EPISODES, time, timeavg/neps, total_time, scoreavg/neps,cumulativereward/neps))
+                print("episode: {}/{}, score: {}, score avg: {:.4}, rew. avg, {:.4}"
+                      .format(e, EPISODES, total_time, scoreavg/neps,cumulativereward/neps))
                 learning61.append([scoreavg/neps])
-                time61.append([timeavg/neps])
                 break
         if len(agent.D) > batch_size:
             loss+=agent.replay(batch_size,e)
     import matplotlib.pyplot as plt 
-    plt.figure(figsize=(10,5))
+    plt.rcParams.update({'font.size': 22})
+    plt.figure(figsize=(20,10))
     plt.plot(learning61[100:], '-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')

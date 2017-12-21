@@ -61,8 +61,11 @@ class workflow:
             for j in range(self.nprocessors):
                 self.actions.append([i,j])
         self.scheduled=[]
-        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
+        #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
+        self.val_mask=self.valid_actions_update()
+        #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed(),self.val_mask]))
+        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.val_mask]))
         
     def ifscheduled(self):
         ifshdl=np.zeros(self.ntasks)
@@ -176,18 +179,25 @@ class workflow:
         vld=True
         if (ntsk in self.scheduled) or (self.violation(ntsk,nproc)): vld=False
         return vld
+    
+    def valid_actions_update(self):
+        valid_mask=np.zeros(len(self.actions),dtype=int)
+        for action in range(len(self.actions)):
+            if self.isvalid(self.actions[action][0],self.actions[action][1]): valid_mask[action]=1
+        return valid_mask
 
     def schedule_task(self, ntsk,nproc):
         reward=0
         pr_load=self.processor_time()
-        if not(self.isvalid(ntsk,nproc)):
+        #if not(self.isvalid(ntsk,nproc)):
             #print('Process is already sheduled')
-            reward=-0.2
-        else:
-            self.scheduled.append(ntsk)
-            self.shdl.append([nproc,ntsk,pr_load[nproc]])
-            self.load=self.processor_time()
-            self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
+        #   reward=-0.2
+        #else:
+        self.scheduled.append(ntsk)
+        self.shdl.append([nproc,ntsk,pr_load[nproc]])
+        self.load=self.processor_time()
+        self.val_mask=self.valid_actions_update()
+        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.val_mask]))
         if len(self.scheduled)==self.ntasks:
             self.completed=True
             reward=self.maxlength-self.schedule_length(self.shdl)
