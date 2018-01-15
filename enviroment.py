@@ -5,8 +5,11 @@ Created on Thu Sep 28 16:58:10 2017
 @author: user
 """
 import numpy as np
+#нужно для приведения состояния к строке
 from collections import Iterable
+import itertools
 
+#приводит список из списков к списку без уровней (из мануалов)
 def flatten(items):
     """Yield items from any nested iterable; see REF."""
     for x in items:
@@ -14,13 +17,16 @@ def flatten(items):
             yield from flatten(x)
         else:
             yield x
-            
+
+ #генерируем случайную кососимметричную матрицу с 0 на диагонали и случайными 1 (-1)         
 def treegen(tree_length):
     tree=np.zeros((tree_length,tree_length),dtype=np.int)
     for j in range(len(tree)): tree[j,(j+1):len(tree)]=np.random.randint(0,2,len(tree[j,(j+1):len(tree)]))
     tree=tree-np.transpose(tree)
-    return tree;
+    return tree;w
 
+#генерируем матрицу ресурсов с учётом того, задачи имеют одинаковый "вес", но на разных процессорах считаются
+# за кратное меньшее (большее) время  
 def compgen(ntask,nprocessors):
     c_gen=np.zeros((nprocessors,ntask))
     mainline=np.random.randint(20, size=(1, ntask))+1
@@ -30,6 +36,7 @@ def compgen(ntask,nprocessors):
     c_gen=np.int64(c_gen)
     return c_gen
 
+# для состояния достаточно только верхнего треугольника из кососимметричной матрицы
 def uppertriangle(tree):
     upper=[]
     for i in range(len(tree)):
@@ -38,7 +45,7 @@ def uppertriangle(tree):
     upper=np.asarray(upper)
     return upper;
             
-
+#класс, который содержит расписание, способ его составления и валидные действия
 class workflow:
     def __init__(self, tree,comp_times):
         self.tree = tree
@@ -65,7 +72,9 @@ class workflow:
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
         self.val_mask=self.valid_actions_update()
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed(),self.val_mask]))
-        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.val_mask]))
+        #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.val_mask]))
+        self.state=list(itertools.chain.from_iterable([uppertriangle(self.tree),list(itertools.chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength,self.val_mask]))
+        
         
     def ifscheduled(self):
         ifshdl=np.zeros(self.ntasks)
@@ -119,10 +128,11 @@ class workflow:
     def violation(self,task,current_time):
         vltn=False
         preq=self.prequesites(task)
-        for item in preq: 
+        for item in preq:
             if item not in self.scheduled: 
                 vltn=True
                 #print('Prequesites are not yet computed')
+                break
         return vltn;
     
     def schedule_length(self,shdl):
@@ -177,12 +187,15 @@ class workflow:
     
     def isvalid(self,ntsk,nproc):
         vld=True
-        if (ntsk in self.scheduled) or (self.violation(ntsk,nproc)): vld=False
+        if(self.violation(ntsk,nproc)): vld=False 
+        if vld:
+            if (ntsk in self.scheduled): vld=False
         return vld
     
     def valid_actions_update(self):
         valid_mask=np.zeros(len(self.actions),dtype=int)
         for action in range(len(self.actions)):
+            if self.actions[action][0] in self.scheduled: continue
             if self.isvalid(self.actions[action][0],self.actions[action][1]): valid_mask[action]=1
         return valid_mask
 
@@ -197,7 +210,7 @@ class workflow:
         self.shdl.append([nproc,ntsk,pr_load[nproc]])
         self.load=self.processor_time()
         self.val_mask=self.valid_actions_update()
-        self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.val_mask]))
+        self.state=list(itertools.chain.from_iterable([uppertriangle(self.tree),list(itertools.chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength,self.val_mask]))
         if len(self.scheduled)==self.ntasks:
             self.completed=True
             reward=self.maxlength-self.schedule_length(self.shdl)
