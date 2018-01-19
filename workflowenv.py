@@ -1,35 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep 28 16:58:10 2017
-@author: user
+Модуль, который содержит расписание и правила его составления
 """
 import numpy as np
 from collections import Iterable
 from itertools import chain
 
+#переводит двумерные массивы в одномерные
 def flatten(items):
-    """Yield items from any nested iterable; see REF."""
     for x in items:
         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
             yield from flatten(x)
         else:
             yield x
-            
+
+#генерируем дерево зависимостей задач            
 def treegen(tree_length):
     tree=np.zeros((tree_length,tree_length),dtype=np.int)
+    #т.к. это орграф без петель, то матрица кососимметричная
     for j in range(len(tree)): tree[j,(j+1):len(tree)]=np.random.randint(0,2,len(tree[j,(j+1):len(tree)]))
     tree=tree-np.transpose(tree)
     return tree;
 
+#генерируем матрицу ресурсов
 def compgen(ntask,nprocessors):
     c_gen=np.zeros((nprocessors,ntask))
     mainline=np.random.randint(20, size=(1, ntask))+1
+    #генерируем одну строчку (для одного процессора)
     c_gen[0,:]=mainline
+    #остальные строчки отличаются лишь на множитель от 0.5 до 2
     for i in range(1,nprocessors):
         c_gen[i,:]=np.random.uniform(low=0.5, high=2.0)*mainline
     c_gen=np.int64(c_gen)
     return c_gen
 
+#т.к. дерево - кососимметричная матрица - нам нужны только значения над диагональю (или под)
+#по ним мы полностью можем восстановить дерево    
 def uppertriangle(tree):
     upper=[]
     for i in range(len(tree)):
@@ -64,20 +70,22 @@ class workflow:
         #self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable(self.comp_times/self.maxlength)),self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength]))
         self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
-        
+    
+    #выводит вектор распределённых задач, 1-в расписании, 0 - ещё нет    
     def ifscheduled(self):
         ifshdl=np.zeros(self.ntasks)
         for task in self.scheduled:
             ifshdl[task]=int(1)
         return ifshdl
     
+    #выводит непосредственных предшественников i-той задачи
     def prequesites(self,task):
         preq=[]
         for i in range(len(self.tree)): 
             if self.tree[task,i]==-1: preq.append(i)
         return(preq)
         
-    
+    #выводит полную цепочку задач до i-той, начиная с первой
     def process_chain(self,task):
         subtasks=[task]
         if self.prequesites(task)!=[]:
@@ -89,6 +97,7 @@ class workflow:
         subtasks=list(set(subtasks))
         return subtasks
     
+    #служит для оценки "наихудшего" расписания
     def max_comp_length(self):
         max_length=np.zeros(self.ntasks)
         for i in range(self.ntasks): 
@@ -96,7 +105,7 @@ class workflow:
                 max_length[i]+=int(np.amax(self.comp_times[:,task]))
         return max_length
             
-
+    #стандартная HEFT метрика (legacy)
     def AFT(self,shdl):
         comptime=self.comp_times;
         #maxtime=self.schedule_length(shdl);
@@ -105,7 +114,8 @@ class workflow:
         for item in shdl:
             aft[item[1]]=(comptime[item[0],item[1]]+item[2])
         return aft;
-
+    
+    #стандартная HEFT метрика (legacy)
     def AST(self,shdl):
         #maxtime=self.schedule_length(shdl);
         maxtime=self.maxlength
@@ -114,6 +124,7 @@ class workflow:
             ast[item[1]]=item[2]
         return ast;
 
+    #проверка, распределены ли все предшественники для данной задачи
     def violation(self,task,current_time):
         vltn=False
         preq=self.prequesites(task)
@@ -124,6 +135,7 @@ class workflow:
                 #print('Prequesites are not yet computed')
         return vltn;
     
+    #выводит длину расписания
     def schedule_length(self,shdl):
         prload=np.zeros(self.nprocessors);
         for item in shdl:
@@ -132,6 +144,7 @@ class workflow:
         shdl_length=np.amax(prload)
         return shdl_length
     
+    #выводит загрузку процессора - время завершения последней распределённой задачи
     def processor_load(self, time):
         load=np.zeros(self.nprocessors);
         for item in self.shdl:
@@ -140,6 +153,7 @@ class workflow:
         #for i in range(len(load)): load[i]=load[i]-time
         return load
     
+    #выводит общее время распределённых задач для каждого процессора
     def processor_time(self):
         time=np.zeros(self.nprocessors);
         for item in self.shdl:
@@ -147,7 +161,7 @@ class workflow:
         return time
     
     
-    
+    #выводит число непосчитанных предшественников для данной задачи (legacy метрика)
     def npreqs_notcomputed(self):
         notcomp=np.zeros(self.ntasks)
         for i in range(self.ntasks):
@@ -157,6 +171,7 @@ class workflow:
         notcomp=notcomp/self.ntasks
         return notcomp;
 
+     #выводит минимальное время, нужное для того, чтобы распределить задачу (legacy метрика)
     def time_to_start(self):
         TTS=np.zeros(self.ntasks)
         for i in range(self.ntasks):
@@ -166,7 +181,8 @@ class workflow:
         TTS=TTS/self.ntasks
         return TTS; 
        
-    
+    #в какой-то момент показывало, свободен ли процессов в данный момент времени t (legacy метрика)
+    #но потом я отказался от явного времени
     def ifbusy(self):
         ifload=np.zeros(self.nprocessors)
         load=self.processor_load(self.current_time)
@@ -174,6 +190,7 @@ class workflow:
             if load[i]>0: ifload[i]=int(1)
         return ifload
     
+    #показывает валидно ли распределить задау i на процессор j
     def isvalid(self,ntsk,nproc):
         vld=True
         if (ntsk in self.scheduled): vld=False
@@ -181,28 +198,35 @@ class workflow:
             if (self.violation(ntsk,nproc)): vld=False
         return vld
     
+    #маска валидных задач
     def get_mask(self):
         valid_mask=np.zeros(len(self.actions),dtype=int)
         for action in range(len(self.actions)):
             if self.actions[action][0] in self.scheduled: continue
             if self.isvalid(self.actions[action][0],self.actions[action][1]): valid_mask[action]=1
         return valid_mask
-
+    
+    #запланировать задачу i на процессор j
     def schedule_task(self, ntsk,nproc,mode):
         reward=0
         pr_load=self.processor_time()
+        #mode "random" подразумевает, что действие не прошло через маску
+        #и мы дополнительно должны проверить его на валидность
         if mode=="random":
             if not(self.isvalid(ntsk,nproc)):
-                #print('Process is already sheduled')
+                #print('Invalid action selected')
                 reward=-0.2
             else:
                 self.scheduled.append(ntsk)
+                #добавляем i задачу на j процессор
                 self.shdl.append([nproc,ntsk,pr_load[nproc]])
+                #обновляем метрики и состояние
                 self.load=self.processor_time()
                 self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
                 if len(self.scheduled)==self.ntasks:
                     self.completed=True
                     reward=self.maxlength-self.schedule_length(self.shdl)
+        #mode "mask" подразумевает, что действие изначально валидно
         if mode=="mask":
             self.scheduled.append(ntsk)
             self.shdl.append([nproc,ntsk,pr_load[nproc]])
@@ -214,5 +238,6 @@ class workflow:
         return reward,self.state;
   
     def act(self, action,mode): 
+        #действия в нейронке хранятся в виде списка длиной n_proc*n_task - тут мы его дешифруем
         reward,state=self.schedule_task(self.actions[action][0],self.actions[action][1],mode)
         return reward,state;
