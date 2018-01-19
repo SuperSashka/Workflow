@@ -1,7 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep 28 16:58:10 2017
+@author: user
+"""
+
+from __future__ import print_function
+
+
 import random
-import json
 from collections import deque
 import numpy as np
+import json
 #from keras import initializations
 #from keras.initializations import normal, identity
 from keras.models import model_from_json
@@ -14,9 +23,9 @@ from keras.optimizers import SGD , Adam
 class DQNAgent:
     def __init__(self, state_size, action_size):
         self.STATE=state_size
-        self.ACTIONS = action_size # number of valid actions
+        self.ACTIONS = action_size # number of  actions
         self.GAMMA = 0.99 # decay rate of past observations
-        self.OBSERVATION = 300. # timesteps to observe before training
+        self.OBSERVATION = 500. # timesteps to observe before training
         self.EXPLORE = 80000. # frames over which to anneal epsilon
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
@@ -29,8 +38,8 @@ class DQNAgent:
 
     def buildmodel(self):
         model = Sequential()
-        model.add(Dense(1024, input_dim=self.STATE, activation='relu'))
-        model.add(Dense(1024, activation='relu'))
+        model.add(Dense(2048, input_dim=self.STATE, activation='relu'))
+        model.add(Dense(2048, activation='relu'))
         model.add(Dense(self.ACTIONS, activation='relu'))
         adam = Adam(lr=self.LEARNING_RATE)
         model.compile(loss='mse',optimizer=adam)
@@ -40,27 +49,25 @@ class DQNAgent:
     def remember(self,SARSA):
         self.D.append(SARSA)
         
-    def act(self,state, mask):
+    def act(self,state,mask):
         #choose an action epsilon greedy
         if random.random() <= self.epsilon:
                 #print("----------Random Action----------")
-                q = np.random.random(self.ACTIONS)*mask
+                q = np.random.random(self.ACTIONS)
+                if mask!='none': q*=mask
                 action_index = np.argmax(q)
-                
         else:
-                q = self.model.predict(state)*mask       #input a stack of 4 images, get the prediction
+                q = self.model.predict(state)
+                if mask!='none': q*=mask
                 action_index = np.argmax(q)
         return action_index
     
     def replay(self,batch_size,ep):
         model_loss=0
         if ep>self.OBSERVATION:
-            #print('Explore')
             minibatch = random.sample(self.D, batch_size)
             inputs = np.zeros((len(minibatch), self.STATE))  
-            #print (inputs.shape)
             targets = np.zeros((inputs.shape[0], self.ACTIONS))                     
-            #Now we do the experience replay
             for i in range(0, len(minibatch)):
                 state_t = minibatch[i][0]
                 action_t = minibatch[i][1]   #This is action index
@@ -82,7 +89,7 @@ class DQNAgent:
                 self.epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON) / self.EXPLORE 
         return model_loss
     
-    def save(self,name):
+    def save(self, name):
         print("Now we save model")
         self.model.save_weights(name, overwrite=True)
         with open("model.json", "w") as outfile:
