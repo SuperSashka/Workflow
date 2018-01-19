@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep 28 16:58:10 2017
-@author: user
+Файл с закоментированными отличиями с обычным workflow которым генерирует
+Расписания рандомно
 """
 import numpy as np
 #import tensorflow as tf

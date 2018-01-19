@@ -27,15 +27,17 @@ class DQNAgent:
         self.GAMMA = 0.99 # decay rate of past observations
         self.OBSERVATION = 500. # timesteps to observe before training
         self.EXPLORE = 80000. # frames over which to anneal epsilon
+        #как правило мы используем e-greedy policy и хотим, чтобы в начале действия были
+        #более рандомны, чем в начале, поэтому мы снижаем e от INITIAL до FINAL за EXPLORE шагов
         self.FINAL_EPSILON = 0.01 # final value of epsilon
         self.INITIAL_EPSILON = 0.1 # starting value of epsilon
         self.REPLAY_MEMORY = 50000 # number of previous transitions to remember
-        self.FRAME_PER_ACTION = 1
         self.LEARNING_RATE = 1e-4
         self.D = deque(maxlen=self.REPLAY_MEMORY)
         self.model=self.buildmodel()
         self.epsilon=self.INITIAL_EPSILON
 
+    #структура сети
     def buildmodel(self):
         model = Sequential()
         model.add(Dense(2048, input_dim=self.STATE, activation='relu'))
@@ -45,7 +47,7 @@ class DQNAgent:
         model.compile(loss='mse',optimizer=adam)
         return model
     
-    
+    #дека для запоминания действий для обучения
     def remember(self,SARSA):
         self.D.append(SARSA)
         
@@ -62,12 +64,17 @@ class DQNAgent:
                 action_index = np.argmax(q)
         return action_index
     
+    #для обучения используется SARSA
     def replay(self,batch_size,ep):
         model_loss=0
+        #observation используется для того чтобы заполнить память рандомными действиями
         if ep>self.OBSERVATION:
+            #выбираем batch_size действий из памяти
             minibatch = random.sample(self.D, batch_size)
+            #мы оптимизируем функцию Q(s,a), соотвественно - вход сети s, выход a
             inputs = np.zeros((len(minibatch), self.STATE))  
-            targets = np.zeros((inputs.shape[0], self.ACTIONS))                     
+            targets = np.zeros((inputs.shape[0], self.ACTIONS))
+            #преобразуем каждую строку из памяти, чтобы использовать sarsa                     
             for i in range(0, len(minibatch)):
                 state_t = minibatch[i][0]
                 action_t = minibatch[i][1]   #This is action index
@@ -81,14 +88,18 @@ class DQNAgent:
                 if terminal:
                     targets[i, action_t] = reward_t
                 else:
+                    #Q(s,a) это предположительная награда, если мы перейдём из состояния s в s_1
+                    #c помощью дейтсивя a, поэтому мы меняем Q по алгоритму SARSA для действий из
+                    #памяти
                     targets[i, action_t] = reward_t + self.GAMMA * np.max(Q_sa)
-            # targets2 = normalize(targets)
+            #обучаем сеть
             model_loss = self.model.train_on_batch(inputs, targets)
             if self.epsilon > self.FINAL_EPSILON:
                 #print('Decrease epsilon')
                 self.epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON) / self.EXPLORE 
         return model_loss
     
+    #функции для загрузки/сохранения весов
     def save(self, name):
         print("Now we save model")
         self.model.save_weights(name, overwrite=True)
