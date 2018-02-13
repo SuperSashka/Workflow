@@ -80,10 +80,8 @@ class workflow:
     
     #выводит непосредственных предшественников i-той задачи
     def prequesites(self,task):
-        preq=[]
-        for i in range(len(self.tree)): 
-            if self.tree[task,i]==-1: preq.append(i)
-        return(preq)
+        preq, = np.where( self.tree[task]==-1 )
+        return preq
         
     #выводит полную цепочку задач до i-той, начиная с первой
     def process_chain(self,task):
@@ -123,17 +121,26 @@ class workflow:
         for item in shdl:
             ast[item[1]]=item[2]
         return ast;
-
+    
     #проверка, распределены ли все предшественники для данной задачи
-    def violation(self,task,current_time):
-        vltn=False
-        preq=self.prequesites(task)
-        for item in preq: 
-            if item not in self.scheduled: 
-                vltn=True
-                break
+    def violation(self,task):
+        vltn=True
+        preq=set(self.prequesites(task))
+        sdl=set(self.scheduled)
+        if (preq.intersection(sdl)==preq): vltn=False
                 #print('Prequesites are not yet computed')
         return vltn;
+    
+    """
+    #проверка, распределены ли все предшественники для данной задачи
+    def violation(self,task):
+        vltn=True
+        preq=self.prequesites(task)
+        if (np.array_equal(np.intersect1d(preq,self.scheduled,assume_unique=True),preq)): vltn=False
+                #print('Prequesites are not yet computed')
+        return vltn;
+    """
+
     
     #выводит длину расписания
     def schedule_length(self,shdl):
@@ -195,7 +202,7 @@ class workflow:
         vld=True
         if (ntsk in self.scheduled): vld=False
         if vld:
-            if (self.violation(ntsk,nproc)): vld=False
+            if (self.violation(ntsk)): vld=False
         return vld
     
     #маска валидных задач

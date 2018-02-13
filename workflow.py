@@ -62,7 +62,7 @@ if __name__ == "__main__":
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=100000
+    EPISODES=10000
     loss=0
     
     for e in range(EPISODES):
@@ -109,12 +109,14 @@ if __name__ == "__main__":
                 time61.append([timeavg/neps])
                 break
         #после каждого составленного расписания обучаем нейронку
-        if len(agent.D) > batch_size:
-            loss+=agent.replay(batch_size,e)
+        if e%100==0:
+            if len(agent.D) > batch_size:
+                loss+=agent.replay(batch_size,e)
     #строим кривую обучения
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(10,5))
     plt.plot(learning61[100:], '-')
+    plt.axhline(y=776, color='b', linestyle='-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
     plt.show()

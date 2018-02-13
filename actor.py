@@ -56,11 +56,11 @@ class DQNAgent:
         if random.random() <= self.epsilon:
                 #print("----------Random Action----------")
                 q = np.random.random(self.ACTIONS)
-                if mask!='none': q*=mask
+                if mask is not 'none': q*=mask
                 action_index = np.argmax(q)
         else:
                 q = self.model.predict(state)
-                if mask!='none': q*=mask
+                if mask is not 'none': q*=mask
                 action_index = np.argmax(q)
         return action_index
     
