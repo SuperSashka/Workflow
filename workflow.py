@@ -45,6 +45,8 @@ if __name__ == "__main__":
     time61=[]
     #число задач
     task_par=60
+    #минимальное число задач
+    task_par_min=10
     #число процессоров
     proc_par=5
     #длинна вектора состояния (вылезает ошибка с числом которое надо подставить при первом запуске с новыми параметрами)
@@ -64,14 +66,17 @@ if __name__ == "__main__":
     timeavg=0
     EPISODES=10000
     loss=0
+    lenavg=0
     
     for e in range(EPISODES):
         #генерируем матрицу ресурсов (размерность n_task*n_proc)
         comptime=wf.compgen(task_par,proc_par)
         #генерируем дерево задач 
-        chns=wf.treegen(task_par)
+        chns=wf.treegen(task_par_min,task_par)
+        random_task_amount=len(chns)
+        lenavg+=random_task_amount
         #передаём их как параметры для окружения 
-        wfl=wf.workflow(chns,comptime)
+        wfl=wf.workflow(chns,comptime,task_par)
         done=wfl.completed
         #получаем начальное сосотояние из окружения
         state = wfl.state
@@ -104,11 +109,11 @@ if __name__ == "__main__":
                 scoreavg+=total_time
                 timeavg+=time
                 neps=e+1
-                print("episode: {}/{}, score: {}, score avg: {:.4}".format(e, EPISODES, total_time, scoreavg/neps))
+                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score: {}, score avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
                 learning61.append([scoreavg/neps])
                 time61.append([timeavg/neps])
                 break
-        #после каждого составленного расписания обучаем нейронку
+        #обучаем нейронку
         if e%100==0:
             if len(agent.D) > batch_size:
                 loss+=agent.replay(batch_size,e)

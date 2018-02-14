@@ -15,7 +15,11 @@ def flatten(items):
             yield x
 
 #генерируем дерево зависимостей задач            
-def treegen(tree_length):
+def treegen(length_from,length_to):
+    if length_from<length_to:
+        tree_length=np.random.randint(length_from,length_to)
+    else:
+        tree_length=length_to
     tree=np.zeros((tree_length,tree_length),dtype=np.int)
     #т.к. это орграф без петель, то матрица кососимметричная
     for j in range(len(tree)): tree[j,(j+1):len(tree)]=np.random.randint(0,2,len(tree[j,(j+1):len(tree)]))
@@ -46,8 +50,10 @@ def uppertriangle(tree):
             
 
 class workflow:
-    def __init__(self, tree,comp_times):
+    def __init__(self, tree,comp_times,max_taskn):
         self.tree = tree
+        self.maxtree=np.zeros((max_taskn,max_taskn))
+        self.maxtree[0:len(self.tree),0:len(self.tree)]=self.tree
         self.comp_times = comp_times
         self.shdl=[]
         self.current_time=0
@@ -55,6 +61,9 @@ class workflow:
         self.completed=False
         #number of chains of tasks
         self.ntasks=len(self.tree)
+        self.preqset=[]
+        for i in range(self.ntasks):
+            self.preqset.append(set(self.parents(i)))
         #number of processors
         self.nprocessors=len(comp_times)
         self.maxlength=np.amax(self.max_comp_length())
@@ -62,13 +71,14 @@ class workflow:
         #for DQN we need to have all actions as a number, every action here is (i,j), shedule first task in chain
         #j on i-th processor
         self.actions=[]
-        for i in range(self.ntasks):
+        for i in range(max_taskn):
             for j in range(self.nprocessors):
                 self.actions.append([i,j])
         self.scheduled=[]
+        self.utrig=uppertriangle(self.maxtree)
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength,self.npreqs_notcomputed()]))
         #self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable(self.comp_times/self.maxlength)),self.load/self.maxlength,self.ifscheduled(),self.schedule_length(self.shdl)/self.maxlength]))
-        self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
+        self.state=list(chain.from_iterable([self.utrig,list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
         #self.state=list(flatten([uppertriangle(self.tree),self.comp_times/self.maxlength,self.load/self.maxlength]))
     
     #выводит вектор распределённых задач, 1-в расписании, 0 - ещё нет    
@@ -79,18 +89,22 @@ class workflow:
         return ifshdl
     
     #выводит непосредственных предшественников i-той задачи
-    def prequesites(self,task):
-        preq, = np.where( self.tree[task]==-1 )
-        return preq
+    def parents(self,task):
+        parents, = np.where(self.tree[task]==-1 )
+        return parents
+
+    def childs(self,task):
+        childs, = np.where(self.tree[task]==1 )
+        return childs
         
     #выводит полную цепочку задач до i-той, начиная с первой
     def process_chain(self,task):
         subtasks=[task]
-        if self.prequesites(task)!=[]:
-            for subtask in self.prequesites(task):
+        if self.parents(task)!=[]:
+            for subtask in self.parents(task):
                 if subtask not in subtasks:
                     subtasks.append(subtask)
-            if self.prequesites(subtask)!=[]: subtasks.append(self.process_chain(subtask))
+            if self.parents(subtask)!=[]: subtasks.append(self.process_chain(subtask))
         subtasks=list(flatten(subtasks))
         subtasks=list(set(subtasks))
         return subtasks
@@ -125,7 +139,7 @@ class workflow:
     #проверка, распределены ли все предшественники для данной задачи
     def violation(self,task):
         vltn=True
-        preq=set(self.prequesites(task))
+        preq=self.preqset[task]
         sdl=set(self.scheduled)
         if (preq.intersection(sdl)==preq): vltn=False
                 #print('Prequesites are not yet computed')
@@ -172,7 +186,7 @@ class workflow:
     def npreqs_notcomputed(self):
         notcomp=np.zeros(self.ntasks)
         for i in range(self.ntasks):
-            for task in self.prequesites(i):
+            for task in self.parents(i):
                 if task not in self.scheduled:
                     notcomp[i]+=1
         notcomp=notcomp/self.ntasks
@@ -182,7 +196,7 @@ class workflow:
     def time_to_start(self):
         TTS=np.zeros(self.ntasks)
         for i in range(self.ntasks):
-            for task in self.prequesites(i):
+            for task in self.parents(i):
                 if task not in self.scheduled:
                     TTS[i]+=np.amin(self.comp_times[:,task])
         TTS=TTS/self.ntasks
@@ -201,6 +215,7 @@ class workflow:
     def isvalid(self,ntsk,nproc):
         vld=True
         if (ntsk in self.scheduled): vld=False
+        if (ntsk>=self.ntasks): vld=False
         if vld:
             if (self.violation(ntsk)): vld=False
         return vld
@@ -238,7 +253,7 @@ class workflow:
             self.scheduled.append(ntsk)
             self.shdl.append([nproc,ntsk,pr_load[nproc]])
             self.load=self.processor_time()
-            self.state=list(chain.from_iterable([uppertriangle(self.tree),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
+            self.state=list(chain.from_iterable([self.utrig,list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
             if len(self.scheduled)==self.ntasks:
                 self.completed=True
                 reward=self.maxlength-self.schedule_length(self.shdl)
