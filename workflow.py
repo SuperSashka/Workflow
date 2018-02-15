@@ -50,7 +50,7 @@ if __name__ == "__main__":
     #число процессоров
     proc_par=5
     #длинна вектора состояния (вылезает ошибка с числом которое надо подставить при первом запуске с новыми параметрами)
-    state_size = 2075
+    state_size = 609
     #число действий
     action_size = task_par*proc_par
     #инициализируем агента
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=10000
+    EPISODES=100000
     loss=0
     lenavg=0
     
@@ -106,10 +106,10 @@ if __name__ == "__main__":
             state = next_state
             if done:
                 #выводим метрики, если расписание составлено
-                scoreavg+=total_time
+                scoreavg+=total_time/random_task_amount
                 timeavg+=time
                 neps=e+1
-                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score: {}, score avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
+                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score: {}, normalized score avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
                 learning61.append([scoreavg/neps])
                 time61.append([timeavg/neps])
                 break
