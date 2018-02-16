@@ -44,6 +44,10 @@ def compgen(ntask,nprocessors):
     c_gen=np.int64(c_gen)
     return c_gen
 
+def out_gen(ntask):
+    out=np.random.randint(5,100, size=ntask)
+    return out
+
 #т.к. дерево - кососимметричная матрица - нам нужны только значения над диагональю (или под)
 #по ним мы полностью можем восстановить дерево    
 def uppertriangle(tree):
@@ -56,7 +60,8 @@ def uppertriangle(tree):
             
 
 class workflow:
-    def __init__(self, tree,comp_times,max_taskn):
+    def __init__(self, tree,comp_times,max_taskn,output):
+        self.internet_speed=50
         self.tree = tree
         self.maxtree=np.zeros((max_taskn,max_taskn))
         self.maxtree[0:len(self.tree),0:len(self.tree)]=self.tree
@@ -67,6 +72,9 @@ class workflow:
         #number of chains of tasks
         self.max_task=max_taskn
         self.ntasks=len(self.tree)
+        self.out=np.zeros(max_taskn)
+        self.out[0:self.ntasks]=output[0:self.ntasks]
+        self.inp=self.input_gen()
         self.preqset=[]
         for i in range(self.ntasks):
             self.preqset.append(set(self.parents(i)))
@@ -94,10 +102,16 @@ class workflow:
         self.procinf=np.zeros((4,max_taskn))
         self.procinf[:,0:self.ntasks]=self.task_lvl()
         self.wflinfo=np.asarray([self.ntasks,self.height,self.max_width,self.avg_width])
-        self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
+        self.node_parents=np.zeros((self.max_task,self.nprocessors))
+        self.node_dict={}
+        self.valid_tsk=set()
+        self.state=[]
+        self.state_update()
         
-        
-        
+    def state_update(self):
+        self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength,list(chain.from_iterable(self.node_parents))]))
+        return
+    
         
     #выводит вектор распределённых задач, 1-в расписании, 0 - ещё нет    
     def ifscheduled(self):
@@ -106,11 +120,25 @@ class workflow:
             ifshdl[task]=int(1)
         return ifshdl
     
+
+    
     #выводит непосредственных предшественников i-той задачи
     def parents(self,task):
         parents, = np.where(self.tree[task]==-1 )
         return parents
 
+    def parents_on_node(self,task):
+        nodes=np.zeros(self.nprocessors)
+        for parent in self.parents(task):
+            if parent in self.scheduled: 
+                nodes[self.node_dict[parent]]+=1
+        return nodes
+    
+    def parents_update(self):
+        for task in self.valid_tsk:
+            self.node_parents[task,:]=self.parents_on_node(task)
+        return
+    
     def childs(self,task):
         childs, = np.where(self.tree[task]==1 )
         return childs
@@ -143,7 +171,12 @@ class workflow:
             n_childs[tsk]=len(self.childs(tsk))
         return tsklvl,tsk_on_lvl,n_parents,n_childs
 
-
+    def input_gen(self):
+        inp_gen=np.zeros(self.max_task)
+        for task in range(self.ntasks):
+            for parent in self.parents(task):
+                inp_gen[task]+=self.out[parent]
+        return inp_gen
 
     #выводит полную цепочку задач до i-той, начиная с первой
     def process_chain(self,task):
@@ -213,10 +246,14 @@ class workflow:
     
     #маска валидных задач
     def get_mask(self):
+        self.valid_tsk=set()
         valid_mask=np.zeros(len(self.actions),dtype=int)
         for action in range(len(self.actions)):
             if self.actions[action][0] in self.scheduled: continue
-            if self.isvalid(self.actions[action][0],self.actions[action][1]): valid_mask[action]=1
+            if self.isvalid(self.actions[action][0],self.actions[action][1]): 
+                valid_mask[action]=1
+                self.valid_tsk.add(self.actions[action][0])
+        self.parents_update()
         return valid_mask
     
     #запланировать задачу i на процессор j
@@ -233,9 +270,11 @@ class workflow:
                 self.scheduled.append(ntsk)
                 #добавляем i задачу на j процессор
                 self.shdl.append([nproc,ntsk,pr_load[nproc]])
+                for child in self.childs(ntsk):
+                    self.comp_times[nproc,child]-=self.out[ntsk]
                 #обновляем метрики и состояние
                 self.load=self.processor_time()
-                self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
+                self.state_update()
                 if len(self.scheduled)==self.ntasks:
                     self.completed=True
                     reward=self.maxlength-self.schedule_length(self.shdl)
@@ -243,8 +282,12 @@ class workflow:
         if mode=="mask":
             self.scheduled.append(ntsk)
             self.shdl.append([nproc,ntsk,pr_load[nproc]])
+            for child in self.childs(ntsk):
+                self.comp_times[nproc,child]-=self.out[ntsk]
+            self.parents_update()
             self.load=self.processor_time()
-            self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength]))
+            self.state_update()
+            self.node_dict[ntsk]=nproc
             if len(self.scheduled)==self.ntasks:
                 self.completed=True
                 reward=self.maxlength-self.schedule_length(self.shdl)

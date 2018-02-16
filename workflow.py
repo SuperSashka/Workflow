@@ -44,13 +44,13 @@ if __name__ == "__main__":
     learning61=[] 
     time61=[]
     #число задач
-    task_par=60
+    task_par=100
     #минимальное число задач
     task_par_min=10
     #число процессоров
-    proc_par=5
+    proc_par=10
     #длинна вектора состояния (вылезает ошибка с числом которое надо подставить при первом запуске с новыми параметрами)
-    state_size = 609
+    state_size = 2514
     #число действий
     action_size = task_par*proc_par
     #инициализируем агента
@@ -71,12 +71,13 @@ if __name__ == "__main__":
     for e in range(EPISODES):
         #генерируем матрицу ресурсов (размерность n_task*n_proc)
         comptime=wf.compgen(task_par,proc_par)
+        inout=wf.out_gen(task_par)
         #генерируем дерево задач 
         chns=wf.treegen(task_par_min,task_par)
         random_task_amount=len(chns)
         lenavg+=random_task_amount
         #передаём их как параметры для окружения 
-        wfl=wf.workflow(chns,comptime,task_par)
+        wfl=wf.workflow(chns,comptime,task_par,inout)
         done=wfl.completed
         #получаем начальное сосотояние из окружения
         state = wfl.state
@@ -117,11 +118,13 @@ if __name__ == "__main__":
         if e%100==0:
             if len(agent.D) > batch_size:
                 loss+=agent.replay(batch_size,e)
+        if e%10000==0:
+            agent.save("weights"+str(e))
     #строим кривую обучения
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(10,5))
     plt.plot(learning61[100:], '-')
-    plt.axhline(y=776, color='b', linestyle='-')
+    #plt.axhline(y=776, color='b', linestyle='-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
     plt.show()
