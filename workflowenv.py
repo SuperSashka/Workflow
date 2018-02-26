@@ -82,7 +82,7 @@ class workflow:
         self.nprocessors=len(comp_times)
         self.maxlength=np.amax(self.max_comp_length())
         self.load=np.zeros(self.nprocessors)
-        #for DQN we need to have all actions as a number, every action here is (i,j), shedule first task in chain
+        #for DQN we need to have all actions as a number, every action here is (i,j), schedule first task in chain
         #j on i-th processor
         self.actions=[]
         for i in range(max_taskn):
@@ -101,7 +101,7 @@ class workflow:
         self.avg_width=sum(self.w)/len(self.w)
         self.procinf=np.zeros((4,max_taskn))
         self.procinf[:,0:self.ntasks]=self.task_lvl()
-        self.wflinfo=np.asarray([self.ntasks,self.height,self.max_width,self.avg_width])
+        self.wflinfo=np.asarray([self.height/self.ntasks,self.max_width/self.ntasks,self.avg_width/self.ntasks])
         self.node_parents=np.zeros((self.max_task,self.nprocessors))
         self.node_dict={}
         self.valid_tsk=set()
@@ -109,7 +109,7 @@ class workflow:
         self.state_update()
         
     def state_update(self):
-        self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength,list(chain.from_iterable(self.node_parents))]))
+        self.state=list(chain.from_iterable([self.wflinfo,list(chain.from_iterable(self.procinf)),self.ifscheduled(),list(chain.from_iterable((self.comp_times/self.maxlength))),self.load/self.maxlength,list(chain.from_iterable(self.node_parents/self.ntasks))]))
         return
     
         
@@ -192,10 +192,7 @@ class workflow:
     
     #служит для оценки "наихудшего" расписания
     def max_comp_length(self):
-        max_length=np.zeros(self.ntasks)
-        for i in range(self.ntasks): 
-            for task in self.process_chain(i):
-                max_length[i]+=int(np.amax(self.comp_times[:,task]))
+        max_length=np.sum(self.comp_times,axis=1)
         return max_length
             
 
@@ -206,7 +203,7 @@ class workflow:
         sdl=set(self.scheduled)
         if (preq.intersection(sdl)==preq): vltn=False
                 #print('Prequesites are not yet computed')
-        return vltn;
+        return vltn
 
     
     #выводит длину расписания
@@ -270,8 +267,10 @@ class workflow:
                 self.scheduled.append(ntsk)
                 #добавляем i задачу на j процессор
                 self.shdl.append([nproc,ntsk,pr_load[nproc]])
+                """
                 for child in self.childs(ntsk):
                     self.comp_times[nproc,child]-=self.out[ntsk]
+                """
                 #обновляем метрики и состояние
                 self.load=self.processor_time()
                 self.state_update()
@@ -282,15 +281,18 @@ class workflow:
         if mode=="mask":
             self.scheduled.append(ntsk)
             self.shdl.append([nproc,ntsk,pr_load[nproc]])
+            """
             for child in self.childs(ntsk):
                 self.comp_times[nproc,child]-=self.out[ntsk]
+            """
             self.parents_update()
             self.load=self.processor_time()
             self.state_update()
             self.node_dict[ntsk]=nproc
             if len(self.scheduled)==self.ntasks:
                 self.completed=True
-                reward=self.maxlength-self.schedule_length(self.shdl)
+                reward=(self.maxlength-self.schedule_length(self.shdl))/self.ntasks
+                #reward=self.maxlength-self.schedule_length(self.shdl)
         return reward,self.state;
   
     def act(self, action,mode): 

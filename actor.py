@@ -11,7 +11,7 @@ import random
 from collections import deque
 import numpy as np
 import json
-#from keras import initializations
+from keras import initializers
 #from keras.initializations import normal, identity
 from keras.models import model_from_json
 from keras.models import Sequential
@@ -40,9 +40,14 @@ class DQNAgent:
     #структура сети
     def buildmodel(self):
         model = Sequential()
-        model.add(Dense(2048, input_dim=self.STATE, activation='relu'))
+        """
+        model.add(Dense(2048, input_dim=self.STATE, activation='relu',kernel_initializer=initializers.RandomNormal(stddev=0.001)))
+        model.add(Dense(2048, activation='relu',kernel_initializer=initializers.RandomNormal(stddev=0.1)))
+        model.add(Dense(self.ACTIONS, activation='relu',kernel_initializer=initializers.RandomNormal(stddev=0.1)))
+        """
+        model.add(Dense(2048, input_dim=self.STATE, activation='relu',kernel_initializer=initializers.RandomUniform(minval=0, maxval=0.1, seed=None)))
         model.add(Dense(2048, activation='relu'))
-        model.add(Dense(self.ACTIONS, activation='relu'))
+        model.add(Dense(self.ACTIONS, activation='relu',kernel_initializer=initializers.RandomUniform(minval=0, maxval=0.1, seed=None)))        
         adam = Adam(lr=self.LEARNING_RATE)
         model.compile(loss='mse',optimizer=adam)
         return model

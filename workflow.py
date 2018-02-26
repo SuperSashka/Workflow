@@ -44,29 +44,30 @@ if __name__ == "__main__":
     learning61=[] 
     time61=[]
     #число задач
-    task_par=100
+    task_par=10
     #минимальное число задач
     task_par_min=10
     #число процессоров
-    proc_par=10
+    proc_par=3
     #длинна вектора состояния (вылезает ошибка с числом которое надо подставить при первом запуске с новыми параметрами)
-    state_size = 2514
+    state_size = 116
     #число действий
     action_size = task_par*proc_par
     #инициализируем агента
     agent =actor.DQNAgent(state_size, action_size)
     #функция загрузки весов (сохраняются agent.save(name))
-    #agent.load("model61.h5")
+    #agent.load("weights90000")
     done = False
     #размер выборки из памяти для обучения
-    batch_size = 256
-    #метрики
+    batch_size = 32
+    #метрикиe
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=100000
+    EPISODES=1000000
     loss=0
     lenavg=0
+    negative_amount=0
     
     for e in range(EPISODES):
         #генерируем матрицу ресурсов (размерность n_task*n_proc)
@@ -99,6 +100,9 @@ if __name__ == "__main__":
             done=wfl.completed
             #получаем награду
             reward=total_time
+            if reward<0:
+                negative_amount+=1
+                #raise SystemExit(0)
             cumulativereward+=reward
             #требуется для совместимости с tf
             next_state = np.reshape(next_state, [1, state_size])
@@ -107,10 +111,10 @@ if __name__ == "__main__":
             state = next_state
             if done:
                 #выводим метрики, если расписание составлено
-                scoreavg+=total_time/random_task_amount
+                scoreavg+=total_time
                 timeavg+=time
                 neps=e+1
-                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score: {}, normalized score avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
+                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score/ntask: {:.4}, s/t avg: {:.4}, neg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps, negative_amount/neps))
                 learning61.append([scoreavg/neps])
                 time61.append([timeavg/neps])
                 break
