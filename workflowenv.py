@@ -291,8 +291,8 @@ class workflow:
             self.node_dict[ntsk]=nproc
             if len(self.scheduled)==self.ntasks:
                 self.completed=True
-                reward=(self.maxlength-self.schedule_length(self.shdl))/self.ntasks
-                #reward=self.maxlength-self.schedule_length(self.shdl)
+                #reward=(self.maxlength-self.schedule_length(self.shdl))/self.ntasks
+                reward=self.maxlength-self.schedule_length(self.shdl)
         return reward,self.state;
   
     def act(self, action,mode): 

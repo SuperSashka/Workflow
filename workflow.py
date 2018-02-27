@@ -43,6 +43,7 @@ if __name__ == "__main__":
     K.set_session(sess)
     learning61=[] 
     time61=[]
+    lossplot=[]
     #число задач
     task_par=10
     #минимальное число задач
@@ -64,10 +65,9 @@ if __name__ == "__main__":
     cumulativereward=0
     scoreavg=0
     timeavg=0
-    EPISODES=1000000
+    EPISODES=300000
     loss=0
     lenavg=0
-    negative_amount=0
     
     for e in range(EPISODES):
         #генерируем матрицу ресурсов (размерность n_task*n_proc)
@@ -100,9 +100,6 @@ if __name__ == "__main__":
             done=wfl.completed
             #получаем награду
             reward=total_time
-            if reward<0:
-                negative_amount+=1
-                #raise SystemExit(0)
             cumulativereward+=reward
             #требуется для совместимости с tf
             next_state = np.reshape(next_state, [1, state_size])
@@ -114,20 +111,21 @@ if __name__ == "__main__":
                 scoreavg+=total_time
                 timeavg+=time
                 neps=e+1
-                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score/ntask: {:.4}, s/t avg: {:.4}, neg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps, negative_amount/neps))
+                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score/ntask: {:.4}, s/t avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
                 learning61.append([scoreavg/neps])
                 time61.append([timeavg/neps])
                 break
         #обучаем нейронку
-        if e%100==0:
-            if len(agent.D) > batch_size:
-                loss+=agent.replay(batch_size,e)
+        if len(agent.D) > batch_size:
+                loss,qloss=agent.replay(batch_size,e)
+                print('loss {}, qloss {}'.format(loss,qloss))
+                lossplot.append([loss])
         if e%10000==0:
             agent.save("weights"+str(e))
     #строим кривую обучения
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(10,5))
-    plt.plot(learning61[100:], '-')
+    plt.plot(lossplot[100:], '-')
     #plt.axhline(y=776, color='b', linestyle='-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
