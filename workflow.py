@@ -47,7 +47,7 @@ if __name__ == "__main__":
     #число задач
     task_par=10
     #минимальное число задач
-    task_par_min=10
+    task_par_min=6
     #число процессоров
     proc_par=3
     #длинна вектора состояния (вылезает ошибка с числом которое надо подставить при первом запуске с новыми параметрами)
@@ -57,10 +57,10 @@ if __name__ == "__main__":
     #инициализируем агента
     agent =actor.DQNAgent(state_size, action_size)
     #функция загрузки весов (сохраняются agent.save(name))
-    #agent.load("weights90000")
+    #agent.load("weights30000")
     done = False
     #размер выборки из памяти для обучения
-    batch_size = 32
+    batch_size = 256
     #метрикиe
     cumulativereward=0
     scoreavg=0
@@ -111,12 +111,13 @@ if __name__ == "__main__":
                 scoreavg+=total_time
                 timeavg+=time
                 neps=e+1
-                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score/ntask: {:.4}, s/t avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
+                print("episode: {}/{},ntask: {},ntask_avg: {:.4}, score: {:.4}, sc_avg: {:.4}".format(e, EPISODES,random_task_amount, lenavg/neps,total_time, scoreavg/neps))
                 learning61.append([scoreavg/neps])
                 time61.append([timeavg/neps])
                 break
         #обучаем нейронку
-        if len(agent.D) > batch_size:
+        if e%100==0:
+            if len(agent.D) > batch_size:
                 loss,qloss=agent.replay(batch_size,e)
                 print('loss {}, qloss {}'.format(loss,qloss))
                 lossplot.append([loss])
@@ -125,7 +126,8 @@ if __name__ == "__main__":
     #строим кривую обучения
     import matplotlib.pyplot as plt 
     plt.figure(figsize=(10,5))
-    plt.plot(lossplot[100:], '-')
+    plt.rcParams.update({'font.size': 22})
+    plt.plot(learning61[100:], '-')
     #plt.axhline(y=776, color='b', linestyle='-')
     plt.ylabel('avg reward')
     plt.xlabel('episodes')
